@@ -13,18 +13,25 @@ def _getCompileTime(context):
 
     compile_time = 0.0
     link_time = 0.0
+    instructions = 0
+    cycles = 0
     dir = os.path.dirname(context.test.getFilePath())
     for path, subdirs, files in os.walk(dir):
         for file in files:
             if file.endswith('.o.time') and file.startswith(prefix):
                 fullpath = os.path.join(path, file)
                 compile_time += timeit.getUserTime(fullpath)
+                instructions += timeit.getInstructions(fullpath)
+                cycles += timeit.getCycles(fullpath)
             if file.endswith('.link.time') and file.startswith(prefix):
                 fullpath = os.path.join(path, file)
                 link_time += timeit.getUserTime(fullpath)
+                cycles += timeit.getCycles(fullpath)
     return {
         'compile_time': compile_time,
         'link_time': link_time,
+        'instructions': instructions,
+        'cycles': cycles
     }
 
 
