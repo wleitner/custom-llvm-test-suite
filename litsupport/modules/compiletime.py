@@ -26,12 +26,14 @@ def _getCompileTime(context):
             if file.endswith('.link.time') and file.startswith(prefix):
                 fullpath = os.path.join(path, file)
                 link_time += timeit.getUserTime(fullpath)
+                instructions += timeit.getInstructions(fullpath)
                 cycles += timeit.getCycles(fullpath)
     return {
         'compile_time': compile_time,
         'link_time': link_time,
         'instructions': instructions,
-        'cycles': cycles
+        'cycles': cycles,
+        'build_time': compile_time + link_time
     }
 
 

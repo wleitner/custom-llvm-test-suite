@@ -1,9 +1,14 @@
-#!/usr/bin/env python
+#!/usr/intel/bin/python3.6.3a
+########################## ONLY DO THIS ON EC ##########################
+from __future__ import print_function
+
+import UsrIntel.R1
+########################################################################
+
 """Tool to filter, organize, compare and display benchmarking results. Usefull
 for smaller datasets. It works great with a few dozen runs it is not designed to
 deal with hundreds.
 Requires the pandas library to be installed."""
-from __future__ import print_function
 
 import pandas as pd
 from scipy import stats
@@ -218,10 +223,13 @@ def print_result(d, limit_output=True, shorten_names=True, minimal_names=False,
                  show_diff_column=True, sortkey='diff', sort_by_abs=True,
                  absolute_diff=False):
     metrics = d.columns.levels[0]
-    if sort_by_abs:
-        d = d.sort_values(by=(metrics[0], sortkey), key=pd.Series.abs, ascending=False)
-    else:
-        d = d.sort_values(by=(metrics[0], sortkey), ascending=False)
+    # WTL: I think there's a bug here and the sort_by_abs is inverted based on the CLI
+    # param, but I didn't try to fix it. Default sort is alphabetical based on test name,
+    # which is what I wanted anyway.
+    # if sort_by_abs:
+    #     d = d.sort_values(by=(metrics[0], sortkey), key=pd.Series.abs, ascending=False)
+    # else:
+    #     d = d.sort_values(by=(metrics[0], sortkey), ascending=False)
 
     # Ensure that the columns are grouped by metric (rather than having the
     # diffs at the end of the line).
@@ -280,7 +288,9 @@ def print_result(d, limit_output=True, shorten_names=True, minimal_names=False,
     out = dataout.to_string(index=False, justify='left', na_rep='',
                             float_format=float_format, formatters=formatters)
     print(out)
-    print(d.describe())
+    # WTL: Don't print out that stupid table at the bottom that compares different tests within a single run,
+    # instead of what we actually want which is comparing a single test across different runs.
+    #print(d.describe())
 
 def main():
     parser = argparse.ArgumentParser(prog='compare.py')
