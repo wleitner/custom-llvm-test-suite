@@ -1,14 +1,9 @@
-#!/usr/intel/bin/python3.6.3a
-########################## ONLY DO THIS ON EC ##########################
-from __future__ import print_function
-
-import UsrIntel.R1
-########################################################################
-
+#!/usr/bin/env python3
 """Tool to filter, organize, compare and display benchmarking results. Usefull
 for smaller datasets. It works great with a few dozen runs it is not designed to
 deal with hundreds.
 Requires the pandas library to be installed."""
+from __future__ import print_function
 
 import pandas as pd
 from scipy import stats
