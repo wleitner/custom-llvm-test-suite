@@ -299,7 +299,7 @@ def print_result(d, limit_output=True, shorten_names=True, minimal_names=False,
         numeric_cols = dataout.columns.levels[1].difference(stat_names)
         dataout.drop(labels=numeric_cols, level=1, axis=1, inplace=True)
     # remove geomean row since I think I broke it.
-    if no_geomean:
+    if no_geomean and show_diff_column and not absolute_diff:
         dataout.drop(labels='Geomean difference', axis=0, inplace=True)
     # output to csv.
     if csv_path is not None:
