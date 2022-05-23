@@ -127,7 +127,8 @@ def get_values(values):
     else:
         return (values.min(axis=1), values.max(axis=1))
 
-def add_diff_column(metric, values, absolute_diff=False):
+def add_diff_column(metric, values, absolute_diff=False, extra_stats=False):
+    numerics = values[metric]
     values0, values1 = get_values(values[metric])
     values0.fillna(0.0, inplace=True)
     values1.fillna(0.0, inplace=True)
@@ -135,7 +136,14 @@ def add_diff_column(metric, values, absolute_diff=False):
     if absolute_diff:
         values[(metric, 'diff')] = values1 - values0
     else:
-        values[(metric, 'diff')] = (values1 / values0) - 1.0
+        values[(metric, 'diff')] = ((values1 / values0) - 1.0) * 100.0000
+
+    if extra_stats:
+        values[(metric, 'median')] = numerics.median(axis=1)
+        values[(metric, 'mean')] = numerics.mean(axis=1)
+        values[(metric, 'deviation')] = numerics.std(axis=1, ddof=0)
+        values[(metric, 'std % of mean')] = (values[(metric, 'deviation')] / values[(metric, 'mean')]) * 100.0000
+
     return values
 
 def add_geomean_row(metrics, data, dataout):
@@ -215,13 +223,13 @@ def determine_common_prefix_suffix(names, min_len=8):
 
 def format_relative_diff(value):
     if not isinstance(value, numbers.Integral):
-        return "%4.1f%%" % (value * 100.)
+        return "%4.1f%%" % (value)
     else:
         return "%-5d" % value
 
 def print_result(d, limit_output=True, shorten_names=True, minimal_names=False,
                  show_diff_column=True, sortkey='diff', sort_by_abs=True,
-                 absolute_diff=False):
+                 absolute_diff=False, no_geomean=False, just_stats=False, csv_path=None):
     metrics = d.columns.levels[0]
     # WTL: I think there's a bug here and the sort_by_abs is inverted based on the CLI
     # param, but I didn't try to fix it. Default sort is alphabetical based on test name,
@@ -284,13 +292,26 @@ def print_result(d, limit_output=True, shorten_names=True, minimal_names=False,
 
     pd.set_option("display.max_colwidth", 0)
     pd.set_option('display.width', 0)
-    # Print an empty value instead of NaN (for the geomean row).
-    out = dataout.to_string(index=False, justify='left', na_rep='',
-                            float_format=float_format, formatters=formatters)
-    print(out)
-    # WTL: Don't print out that stupid table at the bottom that compares different tests within a single run,
-    # instead of what we actually want which is comparing a single test across different runs.
-    #print(d.describe())
+
+    # remove all single run columns.
+    if just_stats:
+        stat_names = pd.Index(['', 'diff', 'median', 'mean', 'deviation', 'std % of mean'])
+        numeric_cols = dataout.columns.levels[1].difference(stat_names)
+        dataout.drop(labels=numeric_cols, level=1, axis=1, inplace=True)
+    # remove geomean row since I think I broke it.
+    if no_geomean and show_diff_column and not absolute_diff:
+        dataout.drop(labels='Geomean difference', axis=0, inplace=True)
+    # output to csv.
+    if csv_path is not None:
+        dataout.to_csv(path_or_buf=csv_path)
+    else:
+        # Print an empty value instead of NaN (for the geomean row).
+        out = dataout.to_string(index=False, justify='left', na_rep='',
+                                float_format=float_format, formatters=formatters)
+        print(out)
+        # WTL: Don't print out that stupid table at the bottom that compares different tests within a single run,
+        # instead of what we actually want which is comparing a single test across different runs.
+        #print(d.describe())
 
 def main():
     parser = argparse.ArgumentParser(prog='compare.py')
@@ -327,6 +348,11 @@ def main():
                         dest='minimal_names', default=False)
     parser.add_argument('--no-abs-sort', action='store_true',
                         dest='no_abs_sort', default=False, help="Don't use abs() when sorting results")
+    parser.add_argument('--no-geomean', action='store_true', dest='no_geomean', default=False)
+    parser.add_argument('--just-stats', action='store_true', dest='just_stats', default=False,
+                        help="Don't print the single-run result columns")
+    parser.add_argument('--extra-stats', action='store_true', dest='extra_stats', default=False)
+    parser.add_argument('-csv', dest='csv_path', default=None, help="Save results to csv file (please provide a path)")
     config = parser.parse_args()
 
     if config.show_diff is None:
@@ -409,7 +435,7 @@ def main():
     data = data.unstack(level=0)
 
     for metric in data.columns.levels[0]:
-        data = add_diff_column(metric, data, absolute_diff=config.absolute_diff)
+        data = add_diff_column(metric, data, absolute_diff=config.absolute_diff, extra_stats=config.extra_stats)
 
     sortkey = 'diff'
     # TODO: should we still be sorting by diff even if the diff is hidden?
@@ -422,7 +448,9 @@ def main():
     limit_output = (not config.all) and (not config.full)
     print_result(data, limit_output, shorten_names, config.minimal_names,
                  config.show_diff, sortkey, config.no_abs_sort,
-                 config.absolute_diff)
+                 config.absolute_diff, config.no_geomean, config.just_stats, config.csv_path)
+    if config.csv_path is not None:
+        print("Results written to csv file: %s\n" % config.csv_path)
 
 
 if __name__ == "__main__":
